@@ -1,5 +1,4 @@
-name: auto-nuild-push
-
+name: auto-build-push
 
 on:
   push:
@@ -7,18 +6,22 @@ on:
       - main
       - master
     paths:
-      - 'api/**'
+      - 'server.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
       - '.github/workflows/docker-push.yml'
-  workflow_dispatch: # Permite ejecutar manualmente
+  workflow_dispatch: 
 
 env:
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/ejemplo-api-docker
+  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/ejemplo-api
   DOCKER_TAG: latest
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -35,15 +38,17 @@ jobs:
       - name: Construir y subir imagen Docker
         uses: docker/build-push-action@v5
         with:
-          context: ./api 
-          file: ./api/Dockerfile
+          context: .            
+          file: ./Dockerfile      
           push: true
-          tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}
+          tags: |
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}
+            ${{ env.DOCKER_IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache
-          cache-to: type=inline
+          cache-to: type=registry,ref=${{ env.DOCKER_IMAGE_NAME }}:buildcache,mode=max
 
       - name: Mostrar información de la imagen
         run: |
-          echo "Imagen construida y subida exitosamente:"
-          echo "  - Imagen: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}"
-          echo "  - Docker Hub: https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/ejemplo-api-docker"
+          echo "Imagen construida y subida:"
+          echo "  - ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
+          echo "  - https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/ejemplo-api"
