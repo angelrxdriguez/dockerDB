@@ -15,7 +15,7 @@ on:
   workflow_dispatch: 
 
 env:
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/ejemplo-api
+  DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ejemplo-api
   DOCKER_TAG: latest
 
 jobs:
@@ -32,7 +32,7 @@ jobs:
       - name: Login a Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Construir y subir imagen Docker
