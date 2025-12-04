@@ -49,9 +49,9 @@ jobs:
       - name: Notificar por Telegram
         if: success()  
         run: |
-          MESSAGE="Nueva imagen subida a Docker Hub
-Repo: ${{ github.repository }}
-Commit: ${{ github.sha }}
+          MESSAGE="Nueva imagen subida a Docker Hub%0A\
+Repo: ${{ github.repository }}%0A\
+Commit: ${{ github.sha }}%0A\
 Imagen: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}"
 
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
