@@ -5,17 +5,10 @@ on:
     branches:
       - main
       - master
-    paths:
-      - 'server.js'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'Dockerfile'
-      - 'docker-compose.yml'
-      - '.github/workflows/docker-push.yml'
   workflow_dispatch: 
 
 env:
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ejemplo-api
+  DOCKER_IMAGE_NAME: angelrxdriguez/ejemplo-api
   DOCKER_TAG: latest
 
 jobs:
@@ -32,7 +25,7 @@ jobs:
       - name: Login a Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Construir y subir imagen Docker
@@ -51,4 +44,16 @@ jobs:
         run: |
           echo "Imagen construida y subida:"
           echo "  - ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
-          echo "  - https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/ejemplo-api"
+          echo "  - https://hub.docker.com/r/angelrxdriguez/ejemplo-api"
+
+      - name: Notificar por Telegram
+        if: success()  
+        run: |
+          MESSAGE="Nueva imagen subida a Docker Hub
+Repo: ${{ github.repository }}
+Commit: ${{ github.sha }}
+Imagen: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_TAG }}"
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d text="$MESSAGE"
