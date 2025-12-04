@@ -15,7 +15,7 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
 });
-
+//test
 app.get('/', (req, res) => {
   res.send('API readyyy');
 });
