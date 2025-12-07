@@ -8,7 +8,7 @@ on:
   workflow_dispatch: 
 
 env:
-  DOCKER_IMAGE_NAME: angelrxdriguez/ejemplo-api
+  DOCKER_IMAGE_NAME: angelrxdriguezz/ejemplo-api
   DOCKER_TAG: latest
 
 jobs:

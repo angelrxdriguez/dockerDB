@@ -29,7 +29,7 @@ app.get('/grupos', async (req, res) => {
     res.status(500).json({ error: 'Error al obtener grupos' });
   }
 });
-//test de comentARIO test4a
+//test de comentARIO test4aa
 app.get('/usuarios', async (req, res) => {
   try {
     const [rows] = await pool.query(`
