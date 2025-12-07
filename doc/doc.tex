@@ -1,0 +1,185 @@
+\documentclass[12pt]{report}
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+\usepackage{listings}
+
+\geometry{a4paper, margin=2.5cm}
+\setstretch{1.2}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{Actividad 4}
+\fancyhead[R]{API Node.js + Docker + GitHub Actions + Telegram}
+\fancyfoot[C]{\thepage}
+\begin{document}
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\Large \textbf{Informe Académico}}\\[0.5cm]
+    {\large Automatización de API con Docker, GitHub Actions y Telegram}\\[2cm]
+
+    {\large Autor: Ángel Panadero Rodríguez}\\[0.25cm]
+    {\large Fecha: \today}\\[4cm]
+
+    \vfill
+
+    \vfill
+\end{titlepage}
+
+\newpage
+
+\section*{Introducción}
+En este proyecto he construido un flujo de trabajo completo que va desde el desarrollo de una API en Node.js hasta su despliegue automatizado usando Docker, GitHub Actions y un sistema de notificaciones en Telegram q te avisa cuando haces un commit a la rama main.
+
+
+\section*{Base de datos}
+He creado una base de datos MySQL llamada \texttt{afundamentos}. La base de datos tiene dos tablas:
+
+\begin{itemize}
+    \item \texttt{grupos}: contiene la información de distintos grupos como Administradores, Profesores o Alumnos.
+    \item \texttt{usuarios}: almacena nombres, edades, contraseñas y el grupo al que pertenece cada usuario.
+\end{itemize}
+
+Incluí registros de ejemplo para poder probar la API fácilmente desde el principio.
+\section*{Desarrollo de la API}
+La API está creada con Express y usa el paquete \texttt{mysql2/promise} para conectarse a la base de datos. Utilizo \texttt{async/await} para que el código sea más limpio y fácil de entender.
+
+Los endpoints principales son:
+
+\begin{itemize}
+    \item \texttt{/} – Mensaje de prueba indicando que la API está funcionando.
+    \item \texttt{/grupos} – Devuelve la lista de grupos.
+    \item \texttt{/usuarios} – Devuelve todos los usuarios junto con su grupo.
+    \item \texttt{/usuarios/:id} – Devuelve un usuario concreto por su ID.
+\end{itemize}
+
+Un fragmento del código principal es:
+
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+app.get('/usuarios', async (req, res) => {
+  const [rows] = await pool.query(`
+    SELECT u.id, u.nombre, u.edad, g.nombre AS grupo
+    FROM usuarios u
+    LEFT JOIN grupos g ON u.id_grupo = g.id
+  `);
+  res.json(rows);
+});
+\end{lstlisting}
+
+Toda la configuración de la conexión se realiza usando variables de entorno para que funcione igual dentro y fuera de Docker.
+
+\section*{Contenedor de Docker}
+Para ejecutar la API dentro de un contenedor creé un \texttt{Dockerfile}. Este archivo instala las dependencias, copia el código y ejecuta el servidor:
+
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+FROM node:20
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["node", "server.js"]
+\end{lstlisting}
+
+Luego configuré \texttt{docker-compose.yml} para levantar dos servicios:
+
+\begin{itemize}
+    \item \textbf{db}: un contenedor MySQL.
+    \item \textbf{api}: la API ejecutándose en Node.js.
+\end{itemize}
+
+Con un solo comando se levanta todo el entorno:
+
+\begin{center}
+\texttt{docker compose up -d}
+\end{center}
+
+Durante la configuración solucioné problemas como puertos ocupados, reinicios del contenedor y variables de entorno incorrectas.
+\section*{Publicación en Docker Hub}
+Creé un repositorio en Docker Hub:
+
+\begin{center}
+\texttt{angelrxdriguez/ejemplo-api}
+\end{center}
+La imagen generada por la API queda guardada allí para poder usarla en cualquier lugar o incluirla en despliegues futuros.
+\section*{Automatización con GitHub Actions}
+Para automatizar el proceso, preparé un workflow que se ejecuta automáticamente cuando hago un \texttt{push} en la rama principal. El workflow hace lo siguiente:
+
+\begin{itemize}
+    \item Descarga el repositorio.
+    \item Construye la imagen Docker de la API.
+    \item Publica la imagen en Docker Hub con dos etiquetas:
+          \begin{itemize}
+             \item \textbf{latest}
+             \item El hash del commit para identificar la versión exacta.
+          \end{itemize}
+    \item Envía una notificación a mi Telegram personal.
+\end{itemize}
+Los secretos necesarios (\texttt{DOCKER\_USERNAME}, \texttt{DOCKER\_PASSWORD}, \texttt{TELEGRAM\_BOT\_TOKEN}, \texttt{TELEGRAM\_CHAT\_ID}) se guardan de forma segura en GitHub.
+\section*{Fragmento real del workflow}
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+- name: Construir y subir imagen Docker
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    file: ./Dockerfile
+    push: true
+    tags: |
+      angelrxdriguez/ejemplo-api:latest
+      angelrxdriguez/ejemplo-api:${{ github.sha }}
+\end{lstlisting}
+\section*{Bot y notificaciones en Telegram}
+Para recibir notificaciones automáticas creé un bot con \texttt{@BotFather}.  
+Después envié un mensaje al bot y consulté mi \texttt{chat\_id} usando:
+\begin{center}
+\texttt{https://api.telegram.org/botTOKEN/getUpdates}
+\end{center}
+El resultado mostró que mi chat privado tenía el identificador:
+
+\begin{center}
+\textbf{8353125857}
+\end{center}
+
+Gracias a este dato, cada vez que la imagen se publica correctamente, GitHub Actions me envía un aviso.
+
+\section*{Código usado para enviar la notificación}
+\begin{lstlisting}[basicstyle=\ttfamily\small]
+- name: Notificar por Telegram
+  if: success()
+  run: |
+    MESSAGE="Nueva imagen subida a Docker Hub%0ARepo: ${{ github.repository }}%0ACommit: ${{ github.sha }}%0AImagen: angelrxdriguez/ejemplo-api:latest"
+    curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+      -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+      -d text="$MESSAGE"
+\end{lstlisting}
+
+Esta notificación aparece en mi chat personal en segundos, confirmando que todo el proceso ha funcionado bien.
+\section*{Problemas y soluciones}
+Durante el desarrollo surgieron varios errores habituales:
+
+\begin{itemize}
+    \item \textbf{Permisos denegados al subir la imagen a Docker Hub}:  
+    El problema era un nombre incorrecto de los secrets. Simplemente modifique.
+
+    \item \textbf{Telegram devolvía ``chat not found''}:  
+    Esto ocurria pq en la URL me cargaba el "bot" antes del token. Hay que poner el enlace con la palabra "bot" antes del token.
+    \item \textbf{Errores de YAML en GitHub Actions}:  
+    Algunos saltos de línea se interpretaban como claves nuevas. Lo solucioné usando una sola línea con saltos codificados (\%0A).
+\end{itemize}
+\section*{Conclusión}
+Este proyecto me ha permitido construir un flujo de trabajo completo y profesional.  
+Ahora tengo:
+
+\begin{itemize}
+    \item Una API que funciona dentro de contenedores Docker.
+    \item Una imagen que se sube automáticamente a Docker Hub.
+    \item Un sistema de avisos en Telegram para confirmar que todo se ha ejecutado correctamente.
+\end{itemize}
+
+
+\end{document}
