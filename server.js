@@ -17,7 +17,7 @@ const pool = mysql.createPool({
 });
 //test
 app.get('/', (req, res) => {
-  res.send('API readyyy');
+  res.send('API readyyy con cambios');
 });
 
 app.get('/grupos', async (req, res) => {
